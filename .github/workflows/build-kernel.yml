@@ -1,0 +1,71 @@
+name: Build cepheus kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Ref used for the verification build
+        required: true
+        default: sixteen-test
+  push:
+    branches:
+      - codex/cloud-kernel-build
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: verify
+            ref_kind: source
+            config_fragment: ""
+          - variant: docker-droidspace
+            ref_kind: workflow
+            config_fragment: kernel/configs/docker-droidspace.config
+
+    steps:
+      - name: Checkout verification source
+        if: matrix.ref_kind == 'source'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_ref || 'sixteen-test' }}
+          fetch-depth: 1
+
+      - name: Checkout workflow source
+        if: matrix.ref_kind == 'workflow'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison flex git zip unzip cpio rsync python3 \
+            libssl-dev libelf-dev dwarves \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            lld llvm
+
+      - name: Fetch Android clang
+        run: |
+          set -eux
+          CLANG_ROOT="$RUNNER_TEMP/android-clang"
+          git clone --depth=1 --filter=blob:none --sparse \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
+            "$CLANG_ROOT"
+          git -C "$CLANG_ROOT" sparse-checkout set clang-r536225
+          echo "CLANG_BIN=$CLANG_ROOT/clang-r536225/bin" >> "$GITHUB_ENV"
+
+      - name: Build ${{ matrix.variant }}
+        run: |
+          bash scripts/ci/build-kernel.sh "${{ matrix.variant }}" "${{ matrix.config_fragment }}"
+
+      - name: Upload ${{ matrix.variant }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cepheus-${{ matrix.variant }}-${{ github.run_number }}
+          path: artifacts/${{ matrix.variant }}/*
+          if-no-files-found: error
