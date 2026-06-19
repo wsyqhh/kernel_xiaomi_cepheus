@@ -39,7 +39,7 @@ make "${MAKE_ARGS[@]}" cepheus_defconfig
 
 if [[ -n "$CONFIG_FRAGMENT" ]]; then
   scripts/kconfig/merge_config.sh -m -O "$OUT_DIR" "$OUT_DIR/.config" "$CI_DIR/$CONFIG_FRAGMENT"
-  yes "" | make "${MAKE_ARGS[@]}" olddefconfig
+  make "${MAKE_ARGS[@]}" olddefconfig < /dev/null
 fi
 
 make "${MAKE_ARGS[@]}" -j"$(nproc)"
