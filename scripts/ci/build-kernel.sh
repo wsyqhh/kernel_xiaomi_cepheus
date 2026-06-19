@@ -1,14 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VARIANT="${1:-verify}"
-CONFIG_FRAGMENT="${2:-}"
+SOURCE_DIR="${1:?source dir is required}"
+CI_DIR="${2:?ci dir is required}"
+VARIANT="${3:-verify}"
+CONFIG_FRAGMENT="${4:-}"
 
-ROOT_DIR="$(pwd)"
+ROOT_DIR="$(cd "$SOURCE_DIR" && pwd)"
+CI_DIR="$(cd "$CI_DIR" && pwd)"
 OUT_DIR="$ROOT_DIR/out"
 ARTIFACT_DIR="$ROOT_DIR/artifacts/$VARIANT"
 
 mkdir -p "$OUT_DIR" "$ARTIFACT_DIR"
+cd "$ROOT_DIR"
+
+KSU_COMMIT="4600bfc66490921ebe813d887bc63f04629baa6f"
+if [[ ! -f KernelSU-Next/kernel/Kconfig ]]; then
+  rm -rf KernelSU-Next
+  git clone https://github.com/KernelSU-Next/KernelSU-Next.git KernelSU-Next
+  git -C KernelSU-Next checkout "$KSU_COMMIT"
+fi
 
 export ARCH=arm64
 export SUBARCH=arm64
@@ -27,7 +38,7 @@ MAKE_ARGS=(
 make "${MAKE_ARGS[@]}" cepheus_defconfig
 
 if [[ -n "$CONFIG_FRAGMENT" ]]; then
-  scripts/kconfig/merge_config.sh -m -O "$OUT_DIR" "$OUT_DIR/.config" "$CONFIG_FRAGMENT"
+  scripts/kconfig/merge_config.sh -m -O "$OUT_DIR" "$OUT_DIR/.config" "$CI_DIR/$CONFIG_FRAGMENT"
   yes "" | make "${MAKE_ARGS[@]}" olddefconfig
 fi
 
