@@ -26,18 +26,18 @@ jobs:
             config_fragment: kernel/configs/docker-droidspace.config
 
     steps:
-      - name: Checkout verification source
-        if: matrix.ref_kind == 'source'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.source_ref || 'sixteen-test' }}
-          fetch-depth: 1
-
-      - name: Checkout workflow source
-        if: matrix.ref_kind == 'workflow'
+      - name: Checkout CI files
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
+          path: ci
+          fetch-depth: 1
+
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref_kind == 'source' && (github.event.inputs.source_ref || 'sixteen-test') || github.ref_name }}
+          path: source
           fetch-depth: 1
 
       - name: Install packages
@@ -61,11 +61,11 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         run: |
-          bash scripts/ci/build-kernel.sh "${{ matrix.variant }}" "${{ matrix.config_fragment }}"
+          bash ci/scripts/ci/build-kernel.sh "source" "ci" "${{ matrix.variant }}" "${{ matrix.config_fragment }}"
 
       - name: Upload ${{ matrix.variant }} artifact
         uses: actions/upload-artifact@v4
         with:
           name: cepheus-${{ matrix.variant }}-${{ github.run_number }}
-          path: artifacts/${{ matrix.variant }}/*
+          path: source/artifacts/${{ matrix.variant }}/*
           if-no-files-found: error
