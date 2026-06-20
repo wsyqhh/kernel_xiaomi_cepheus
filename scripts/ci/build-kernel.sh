@@ -4,7 +4,7 @@ set -euo pipefail
 SOURCE_DIR="${1:?source dir is required}"
 CI_DIR="${2:?ci dir is required}"
 VARIANT="${3:-verify}"
-CONFIG_FRAGMENT="${4:-}"
+CONFIG_INPUT="${4:-}"
 
 ROOT_DIR="$(cd "$SOURCE_DIR" && pwd)"
 CI_DIR="$(cd "$CI_DIR" && pwd)"
@@ -35,11 +35,11 @@ MAKE_ARGS=(
   LLVM_IAS=1
 )
 
-make "${MAKE_ARGS[@]}" cepheus_defconfig
-
-if [[ -n "$CONFIG_FRAGMENT" ]]; then
-  scripts/kconfig/merge_config.sh -m -O "$OUT_DIR" "$OUT_DIR/.config" "$CI_DIR/$CONFIG_FRAGMENT"
+if [[ -n "$CONFIG_INPUT" && -f "$CI_DIR/$CONFIG_INPUT" ]]; then
+  cp "$CI_DIR/$CONFIG_INPUT" "$OUT_DIR/.config"
   make "${MAKE_ARGS[@]}" olddefconfig < /dev/null
+else
+  make "${MAKE_ARGS[@]}" cepheus_defconfig
 fi
 
 make "${MAKE_ARGS[@]}" -j"$(nproc)"

@@ -23,7 +23,7 @@ jobs:
             config_fragment: ""
           - variant: docker-droidspace
             ref_kind: workflow
-            config_fragment: kernel/configs/docker-droidspace.config
+            config_fragment: kernel/configs/phone-droidspace-docker.config
 
     steps:
       - name: Checkout CI files
